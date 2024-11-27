@@ -24,11 +24,13 @@
 
 VERSION="2.2.4"
 
-set -- "$@" -- "$TIMEOUT" "$QUIET" "$PROTOCOL" "$HOST" "$PORT" "$result"
+set -- "$@" -- "$TIMEOUT" "$QUIET" "$PROTOCOL" "$HOST" "$PORT" "$CA_PARAMS" "$result"
 TIMEOUT=15
 QUIET=0
 # The protocol to make the request with, either "tcp" or "http"
 PROTOCOL="tcp"
+# wget CA related params
+CA_PARAMS=""
 
 echoerr() {
   if [ "$QUIET" -ne 1 ]; then printf "%s\n" "$*" 1>&2; fi
@@ -43,6 +45,8 @@ Usage:
   -t TIMEOUT | --timeout=timeout      Timeout in seconds, zero for no timeout
                                       Defaults to 15 seconds
   -v | --version                      Show the version of this tool
+  -nc | --no-check-ca                 Do not check CA certificates
+  -ca <CA file> | --ca-cert=<CA file> Use this CA certificate (PEM format)
   -- COMMAND ARGS                     Execute command with args after the test finishes
 USAGE
   exit "$exitcode"
@@ -72,7 +76,7 @@ wait_for() {
         nc -w 1 -z "$HOST" "$PORT" > /dev/null 2>&1
         ;;
       http)
-        wget --timeout=1 --tries=1 -q "$HOST" -O /dev/null > /dev/null 2>&1
+        wget --timeout=1 --tries=1 $CA_PARAMS -q "$HOST" -O /dev/null > /dev/null 2>&1
         ;;
       *)
         echoerr "Unknown protocol '$PROTOCOL'"
@@ -147,6 +151,22 @@ while :; do
     ;;
     --timeout=*)
     TIMEOUT="${1#*=}"
+    shift 1
+    ;;
+    -nc | --no-check-ca)
+    CA_PARAMS="--no-check-certificate"
+    shift 1
+    ;;
+    -ca | --ca-cert)
+    CA_PARAMS="--ca-certificate=$2"
+    shift 2
+    ;;
+    -ca*)
+    CA_PARAMS="--ca-certificate=${1#-ca}"
+    shift 1
+    ;;
+    --ca-cert=*)
+    CA_PARAMS="--ca-certificate=${1#*=}"
     shift 1
     ;;
     --)
